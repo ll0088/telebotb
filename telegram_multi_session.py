@@ -13,7 +13,15 @@ import string
 from datetime import datetime
 from typing import Dict, Set
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, ConversationHandler
+from telegram.ext import (
+    Application, 
+    CommandHandler, 
+    ContextTypes, 
+    MessageHandler, 
+    filters, 
+    ConversationHandler,
+    CallbackQueryHandler  # <-- This was missing!
+)
 import aiohttp
 from aiohttp import web
 import aiohttp_cors
@@ -244,7 +252,7 @@ async def list_sessions(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text += f"  Updated: {data['updated_at'][11:16]}\n\n"
 
         keyboard.append([
-            InlineKeyboardButton(f"✏️ {data.get('name', 'Unnamed')[:20]}", callback_data=f'edit_{session_id}')
+            InlineKeyboardButton(f"✏️ {data.get('name', 'Unnamed')[:20]}", callback_data=f'edit_select_{session_id}')
         ])
 
     keyboard.append([InlineKeyboardButton("⬅️ Back to Menu", callback_data='back_to_menu')])
@@ -280,7 +288,7 @@ async def edit_session_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
         parse_mode='Markdown'
     )
 
-    return ConversationHandler.END  # We'll handle selection via callback
+    return ConversationHandler.END
 
 async def edit_session_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle session selection for edit"""
@@ -291,7 +299,7 @@ async def edit_session_select(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     if session_id not in sessions:
         await query.edit_message_text("Session not found!")
-        return
+        return ConversationHandler.END
 
     context.user_data['editing_session'] = session_id
     session_name = sessions[session_id].get('name', 'Unnamed')
@@ -423,10 +431,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await delete_session_start(update, context)
     elif data == 'back_to_menu':
         await back_to_menu(update, context)
-    elif data.startswith('edit_select_'):
-        return await edit_session_select(update, context)
-    elif data.startswith('delete_confirm_'):
-        await delete_confirm(update, context)
     elif data.startswith('copy_link_'):
         session_id = data.replace('copy_link_', '')
         web_url = f"https://your-site.netlify.app/?s={session_id}"
